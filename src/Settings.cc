@@ -333,6 +333,14 @@ namespace ORB_SLAM3 {
             static_cast<KannalaBrandt8*>(calibration2_)->mvLappingArea = vOverlapping;
         }
 
+        //For Rectified stereo, cam2 shares cam1 intrinsics (no separate read).
+        if(cameraType_ == Rectified){
+            vector<float> vCal1 = {calibration1_->getParameter(0), calibration1_->getParameter(1),
+                                   calibration1_->getParameter(2), calibration1_->getParameter(3)};
+            calibration2_ = new Pinhole(vCal1);
+            originalCalib2_ = new Pinhole(vCal1);
+        }
+
         //Load stereo extrinsic calibration
         if(cameraType_ == Rectified){
             b_ = readParameter<float>(fSettings,"Stereo.b",found);
