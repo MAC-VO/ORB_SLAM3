@@ -40,15 +40,36 @@ cv::Mat numpy_to_cvmat(py::array_t<uint8_t> arr) {
 PYBIND11_MODULE(orbslam3_python, m) {
     m.doc() = "Minimal pybind11 bindings for ORB-SLAM3 System";
 
+    py::class_<ORB_SLAM3::StereoDirectInitConfig>(m, "StereoInitConfig")
+        .def(py::init<>())
+        .def_readwrite("fx", &ORB_SLAM3::StereoDirectInitConfig::fx)
+        .def_readwrite("fy", &ORB_SLAM3::StereoDirectInitConfig::fy)
+        .def_readwrite("cx", &ORB_SLAM3::StereoDirectInitConfig::cx)
+        .def_readwrite("cy", &ORB_SLAM3::StereoDirectInitConfig::cy)
+        .def_readwrite("width", &ORB_SLAM3::StereoDirectInitConfig::width)
+        .def_readwrite("height", &ORB_SLAM3::StereoDirectInitConfig::height)
+        .def_readwrite("baseline", &ORB_SLAM3::StereoDirectInitConfig::baseline)
+        .def_readwrite("fps", &ORB_SLAM3::StereoDirectInitConfig::fps)
+        .def_readwrite("rgb", &ORB_SLAM3::StereoDirectInitConfig::rgb)
+        .def_readwrite("stereo_th_depth", &ORB_SLAM3::StereoDirectInitConfig::stereoThDepth)
+        .def_readwrite("orb_n_features", &ORB_SLAM3::StereoDirectInitConfig::orbNFeatures)
+        .def_readwrite("orb_scale_factor", &ORB_SLAM3::StereoDirectInitConfig::orbScaleFactor)
+        .def_readwrite("orb_n_levels", &ORB_SLAM3::StereoDirectInitConfig::orbNLevels)
+        .def_readwrite("orb_ini_th_fast", &ORB_SLAM3::StereoDirectInitConfig::orbIniThFAST)
+        .def_readwrite("orb_min_th_fast", &ORB_SLAM3::StereoDirectInitConfig::orbMinThFAST)
+        .def_readwrite("th_far_points", &ORB_SLAM3::StereoDirectInitConfig::thFarPoints)
+        .def_readwrite("atlas_load_file", &ORB_SLAM3::StereoDirectInitConfig::atlasLoadFile)
+        .def_readwrite("atlas_save_file", &ORB_SLAM3::StereoDirectInitConfig::atlasSaveFile);
+
     py::class_<ORB_SLAM3::System>(m, "System")
         .def(py::init([](const std::string &vocab_file,
-                         const std::string &settings_file,
+                         const ORB_SLAM3::StereoDirectInitConfig &stereo_init_config,
                          bool use_viewer) {
-            return new ORB_SLAM3::System(vocab_file, settings_file,
+            return new ORB_SLAM3::System(vocab_file, stereo_init_config,
                                          ORB_SLAM3::System::STEREO, use_viewer);
         }),
         py::arg("vocab_file"),
-        py::arg("settings_file"),
+        py::arg("stereo_init_config"),
         py::arg("use_viewer") = false)
 
         .def("track_stereo",

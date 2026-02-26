@@ -27,10 +27,38 @@
 #include <opencv2/core/eigen.hpp>
 
 #include <iostream>
+#include <stdexcept>
+#include <sstream>
 
 using namespace std;
 
 namespace ORB_SLAM3 {
+
+    namespace {
+        void validate_positive_float(const float value, const char* name) {
+            if (value <= 0.0f) {
+                std::ostringstream oss;
+                oss << name << " must be > 0, received " << value;
+                throw std::invalid_argument(oss.str());
+            }
+        }
+
+        void validate_non_negative_float(const float value, const char* name) {
+            if (value < 0.0f) {
+                std::ostringstream oss;
+                oss << name << " must be >= 0, received " << value;
+                throw std::invalid_argument(oss.str());
+            }
+        }
+
+        void validate_positive_int(const int value, const char* name) {
+            if (value <= 0) {
+                std::ostringstream oss;
+                oss << name << " must be > 0, received " << value;
+                throw std::invalid_argument(oss.str());
+            }
+        }
+    } // namespace
 
     template<>
     float Settings::readParameter<float>(cv::FileStorage& fSettings, const std::string& name, bool& found, const bool required){
@@ -178,6 +206,90 @@ namespace ORB_SLAM3 {
             cout << "\t-Computed rectification maps" << endl;
         }
 
+        cout << "----------------------------------" << endl;
+    }
+
+    Settings::Settings(const StereoDirectInitConfig &config, const int& sensor) :
+    bNeedToUndistort_(false), bNeedToRectify_(false), bNeedToResize1_(false), bNeedToResize2_(false) {
+        sensor_ = sensor;
+        if(sensor_ != System::STEREO){
+            throw std::invalid_argument("StereoDirectInitConfig only supports System::STEREO sensor mode.");
+        }
+
+        validate_positive_float(config.fx, "StereoDirectInitConfig.fx");
+        validate_positive_float(config.fy, "StereoDirectInitConfig.fy");
+        validate_positive_int(config.width, "StereoDirectInitConfig.width");
+        validate_positive_int(config.height, "StereoDirectInitConfig.height");
+        validate_positive_float(config.baseline, "StereoDirectInitConfig.baseline");
+        validate_positive_float(config.fps, "StereoDirectInitConfig.fps");
+        validate_positive_float(config.stereoThDepth, "StereoDirectInitConfig.stereoThDepth");
+        validate_positive_int(config.orbNFeatures, "StereoDirectInitConfig.orbNFeatures");
+        validate_positive_float(config.orbScaleFactor, "StereoDirectInitConfig.orbScaleFactor");
+        validate_positive_int(config.orbNLevels, "StereoDirectInitConfig.orbNLevels");
+        validate_positive_int(config.orbIniThFAST, "StereoDirectInitConfig.orbIniThFAST");
+        validate_positive_int(config.orbMinThFAST, "StereoDirectInitConfig.orbMinThFAST");
+        validate_non_negative_float(config.thFarPoints, "StereoDirectInitConfig.thFarPoints");
+        if(config.orbMinThFAST > config.orbIniThFAST){
+            throw std::invalid_argument("StereoDirectInitConfig.orbMinThFAST must be <= orbIniThFAST.");
+        }
+
+        cameraType_ = Rectified;
+        vector<float> vCalibration = {config.fx, config.fy, config.cx, config.cy};
+        calibration1_ = new Pinhole(vCalibration);
+        originalCalib1_ = new Pinhole(vCalibration);
+        calibration2_ = new Pinhole(vCalibration);
+        originalCalib2_ = new Pinhole(vCalibration);
+
+        originalImSize_.width = config.width;
+        originalImSize_.height = config.height;
+        newImSize_ = originalImSize_;
+        fps_ = config.fps;
+        bRGB_ = config.rgb;
+
+        b_ = config.baseline;
+        bf_ = b_ * config.fx;
+        thDepth_ = config.stereoThDepth;
+
+        nFeatures_ = config.orbNFeatures;
+        scaleFactor_ = config.orbScaleFactor;
+        nLevels_ = config.orbNLevels;
+        initThFAST_ = config.orbIniThFAST;
+        minThFAST_ = config.orbMinThFAST;
+
+        sLoadFrom_ = config.atlasLoadFile;
+        sSaveto_ = config.atlasSaveFile;
+        thFarPoints_ = config.thFarPoints;
+
+        // Values unused in stereo-only direct init are initialized to deterministic defaults.
+        noiseGyro_ = 0.0f;
+        noiseAcc_ = 0.0f;
+        gyroWalk_ = 0.0f;
+        accWalk_ = 0.0f;
+        imuFrequency_ = 0.0f;
+        Tbc_ = Sophus::SE3f();
+        insertKFsWhenLost_ = true;
+        depthMapFactor_ = 1.0f;
+
+        keyFrameSize_ = 0.0f;
+        keyFrameLineWidth_ = 0.0f;
+        graphLineWidth_ = 0.0f;
+        pointSize_ = 0.0f;
+        cameraSize_ = 0.0f;
+        cameraLineWidth_ = 0.0f;
+        viewPointX_ = 0.0f;
+        viewPointY_ = 0.0f;
+        viewPointZ_ = 0.0f;
+        viewPointF_ = 0.0f;
+        imageViewerScale_ = 1.0f;
+        Tlr_ = Sophus::SE3f();
+
+        cout << "Loading settings from direct stereo initialization config" << endl;
+        cout << "\t-Loaded camera intrinsics" << endl;
+        cout << "\t-Loaded stereo baseline/depth threshold" << endl;
+        cout << "\t-Loaded image info" << endl;
+        cout << "\t-Loaded ORB settings" << endl;
+        cout << "\t-Loaded Atlas settings" << endl;
+        cout << "\t-Loaded misc parameters" << endl;
         cout << "----------------------------------" << endl;
     }
 

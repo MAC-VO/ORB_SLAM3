@@ -39,6 +39,28 @@ require_file() {
     fi
 }
 
+ensure_orb_vocabulary() {
+    local vocabulary_dir="$ROOT_DIR/Vocabulary"
+    local vocabulary_text="$vocabulary_dir/ORBvoc.txt"
+    local vocabulary_archive="$vocabulary_dir/ORBvoc.txt.tar.gz"
+
+    if [[ -f "$vocabulary_text" ]]; then
+        echo "[ORB_SLAM3] Vocabulary already extracted, skipping."
+        return
+    fi
+
+    require_command tar
+    require_file "$vocabulary_archive"
+
+    echo "[ORB_SLAM3] Extracting ORBvoc.txt from archive..."
+    tar -xzf "$vocabulary_archive" -C "$vocabulary_dir"
+
+    if [[ ! -f "$vocabulary_text" ]]; then
+        echo "Error: extraction did not produce expected file: $vocabulary_text" >&2
+        exit 1
+    fi
+}
+
 clean_build_caches() {
     echo "[ORB_SLAM3] Force rebuild: removing all build caches..."
     rm -rf "$ROOT_DIR/Thirdparty/DBoW2/build"
@@ -66,13 +88,12 @@ main() {
     fi
 
     require_command cmake
-    require_command tar
 
     require_directory "$ROOT_DIR/Thirdparty/DBoW2"
     require_directory "$ROOT_DIR/Thirdparty/g2o"
     require_directory "$ROOT_DIR/Thirdparty/Sophus"
     require_directory "$ROOT_DIR/Vocabulary"
-    require_file "$ROOT_DIR/Vocabulary/ORBvoc.txt.tar.gz"
+    ensure_orb_vocabulary
 
     build_with_cmake "$ROOT_DIR/Thirdparty/DBoW2" "$ROOT_DIR/Thirdparty/DBoW2/build" "Thirdparty/DBoW2"
     build_with_cmake "$ROOT_DIR/Thirdparty/g2o" "$ROOT_DIR/Thirdparty/g2o/build" "Thirdparty/g2o"

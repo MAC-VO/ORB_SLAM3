@@ -34,6 +34,30 @@ namespace ORB_SLAM3 {
 
     class System;
 
+    struct StereoDirectInitConfig {
+        float fx = 0.0f;
+        float fy = 0.0f;
+        float cx = 0.0f;
+        float cy = 0.0f;
+        int width = 0;
+        int height = 0;
+        float baseline = 0.0f;
+
+        float fps = 0.0f;
+        bool rgb = false;
+        float stereoThDepth = 0.0f;
+
+        int orbNFeatures = 0;
+        float orbScaleFactor = 0.0f;
+        int orbNLevels = 0;
+        int orbIniThFAST = 0;
+        int orbMinThFAST = 0;
+
+        float thFarPoints = 0.0f;
+        std::string atlasLoadFile;
+        std::string atlasSaveFile;
+    };
+
     //TODO: change to double instead of float
 
     class Settings {
@@ -56,6 +80,7 @@ namespace ORB_SLAM3 {
          * Constructor from file
          */
         Settings(const std::string &configFile, const int& sensor);
+        Settings(const StereoDirectInitConfig &config, const int& sensor);
 
         /*
          * Ostream operator overloading to dump settings to the terminal
