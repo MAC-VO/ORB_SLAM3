@@ -1195,6 +1195,11 @@ void LoopClosing::CorrectLoop()
     mpLoopMatchedKF->AddLoopEdge(mpCurrentKF);
     mpCurrentKF->AddLoopEdge(mpLoopMatchedKF);
 
+    {
+        unique_lock<mutex> lock(mMutexLoopEvents);
+        mLoopEventQueue.push_back({mpCurrentKF->mTimeStamp, mpLoopMatchedKF->mTimeStamp});
+    }
+
     // Launch a new thread to perform Global Bundle Adjustment (Only if few keyframes, if not it would take too much time)
     if(!pLoopMap->isImuInitialized() || (pLoopMap->KeyFramesInMap()<200 && mpAtlas->CountMaps()==1))
     {
@@ -1210,6 +1215,13 @@ void LoopClosing::CorrectLoop()
     mpLocalMapper->Release();    
 
     mLastLoopKFid = mpCurrentKF->mnId; //TODO old varible, it is not use in the new algorithm
+}
+
+std::vector<LoopClosing::LoopEvent> LoopClosing::DrainLoopEvents() {
+    unique_lock<mutex> lock(mMutexLoopEvents);
+    std::vector<LoopEvent> events(mLoopEventQueue.begin(), mLoopEventQueue.end());
+    mLoopEventQueue.clear();
+    return events;
 }
 
 void LoopClosing::MergeLocal()

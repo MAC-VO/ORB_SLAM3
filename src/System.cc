@@ -633,6 +633,35 @@ bool System::MapChanged()
         return false;
 }
 
+std::vector<std::array<double, 8>> System::GetAllKeyFramePoses()
+{
+    std::vector<KeyFrame*> vpKFs = mpAtlas->GetAllKeyFrames();
+    sort(vpKFs.begin(), vpKFs.end(), KeyFrame::lId);
+
+    std::vector<std::array<double, 8>> result;
+    result.reserve(vpKFs.size());
+    for (KeyFrame* pKF : vpKFs) {
+        if (pKF->isBad()) continue;
+        Sophus::SE3f Tcw = pKF->GetPose();
+        Eigen::Vector3f t = Tcw.translation();
+        Eigen::Quaternionf q = Tcw.unit_quaternion();
+        result.push_back({pKF->mTimeStamp,
+                          static_cast<double>(t.x()), static_cast<double>(t.y()), static_cast<double>(t.z()),
+                          static_cast<double>(q.x()), static_cast<double>(q.y()), static_cast<double>(q.z()), static_cast<double>(q.w())});
+    }
+    return result;
+}
+
+std::vector<std::pair<double, double>> System::DrainLoopClosures()
+{
+    auto events = mpLoopCloser->DrainLoopEvents();
+    std::vector<std::pair<double, double>> result;
+    result.reserve(events.size());
+    for (const auto& e : events)
+        result.emplace_back(e.current_ts, e.matched_ts);
+    return result;
+}
+
 void System::Reset()
 {
     unique_lock<mutex> lock(mMutexReset);

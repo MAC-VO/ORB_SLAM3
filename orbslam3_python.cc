@@ -8,6 +8,7 @@
 
 #include <pybind11/pybind11.h>
 #include <pybind11/numpy.h>
+#include <pybind11/stl.h>
 
 #include <opencv2/core/core.hpp>
 #include <Eigen/Core>
@@ -106,5 +107,28 @@ PYBIND11_MODULE(orbslam3_python, m) {
              })
 
         .def("shutdown",
-             [](ORB_SLAM3::System &self) { self.Shutdown(); });
+             [](ORB_SLAM3::System &self) { self.Shutdown(); })
+
+        .def("map_changed",
+             [](ORB_SLAM3::System &self) -> bool {
+                 return self.MapChanged();
+             })
+
+        .def("get_all_keyframe_poses",
+             [](ORB_SLAM3::System &self) -> py::array_t<double> {
+                 auto poses = self.GetAllKeyFramePoses();
+                 std::vector<long> shape = {static_cast<long>(poses.size()), 8L};
+                 py::array_t<double> out(shape);
+                 if (poses.empty()) return out;
+                 auto ptr = out.mutable_unchecked<2>();
+                 for (size_t i = 0; i < poses.size(); ++i)
+                     for (size_t j = 0; j < 8; ++j)
+                         ptr(i, j) = poses[i][j];
+                 return out;
+             })
+
+        .def("drain_loop_closures",
+             [](ORB_SLAM3::System &self) -> std::vector<std::pair<double, double>> {
+                 return self.DrainLoopClosures();
+             });
 }

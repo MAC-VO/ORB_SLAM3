@@ -26,6 +26,7 @@
 #include<stdlib.h>
 #include<string>
 #include<thread>
+#include<array>
 #include<opencv2/core/core.hpp>
 
 #include "Tracking.h"
@@ -185,6 +186,12 @@ public:
     void ChangeDataset();
 
     float GetImageScale();
+
+    // Keyframe poses sorted by ID: [timestamp, tx, ty, tz, qx, qy, qz, qw] in Tcw convention.
+    std::vector<std::array<double, 8>> GetAllKeyFramePoses();
+
+    // Drain queued loop closure events from the LoopClosing thread.
+    std::vector<std::pair<double, double>> DrainLoopClosures();
 
 #ifdef REGISTER_TIMES
     void InsertRectTime(double& time);

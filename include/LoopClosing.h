@@ -31,6 +31,7 @@
 #include <boost/algorithm/string.hpp>
 #include <thread>
 #include <mutex>
+#include <deque>
 #include "Thirdparty/g2o/g2o/types/types_seven_dof_expmap.h"
 
 namespace ORB_SLAM3
@@ -49,6 +50,11 @@ public:
     typedef pair<set<KeyFrame*>,int> ConsistentGroup;    
     typedef map<KeyFrame*,g2o::Sim3,std::less<KeyFrame*>,
         Eigen::aligned_allocator<std::pair<KeyFrame* const, g2o::Sim3> > > KeyFrameAndPose;
+
+    struct LoopEvent {
+        double current_ts;
+        double matched_ts;
+    };
 
 public:
 
@@ -81,6 +87,8 @@ public:
     void RequestFinish();
 
     bool isFinished();
+
+    std::vector<LoopEvent> DrainLoopEvents();
 
 #ifdef REGISTER_TIMES
 
@@ -234,6 +242,10 @@ protected:
     int mnNumCorrection;
     int mnCorrectionGBA;
 
+
+    // Loop event queue (thread-safe, drained by Python bindings)
+    std::deque<LoopEvent> mLoopEventQueue;
+    std::mutex mMutexLoopEvents;
 
     // To (de)activate LC
     bool mbActiveLC = true;
