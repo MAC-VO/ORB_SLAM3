@@ -2,12 +2,18 @@
  * Pybind11 bindings for ORB-SLAM3 System.
  *
  * Exposes a minimal Python API: construct, track_stereo, get_tracking_state,
- * shutdown.  Poses are returned as 7-element numpy arrays
+ * get_all_frame_poses, shutdown.  Poses are returned as 7-element numpy arrays
  * [tx, ty, tz, qx, qy, qz, qw].
  */
 
 #include <pybind11/pybind11.h>
 #include <pybind11/numpy.h>
+
+#include <cstdio>
+#include <fstream>
+#include <sstream>
+#include <string>
+#include <vector>
 
 #include <opencv2/core/core.hpp>
 #include <Eigen/Core>
@@ -103,6 +109,45 @@ PYBIND11_MODULE(orbslam3_python, m) {
         .def("get_tracking_state",
              [](ORB_SLAM3::System &self) -> int {
                  return self.GetTrackingState();
+             })
+
+        // Returns Nx8 float64 array: [timestamp_ns, tx, ty, tz, qx, qy, qz, qw]
+        // Pose convention: T_wc (world-from-camera) as written by SaveTrajectoryEuRoC.
+        // Re-derives every frame's absolute pose from its reference keyframe,
+        // capturing any loop-closure / BA corrections applied after tracking.
+        // Lost frames are skipped (the returned N <= total frames tracked).
+        .def("get_all_frame_poses",
+             [](ORB_SLAM3::System &self) -> py::object {
+                 // Write trajectory to a temp file, parse it back.
+                 std::string tmpfile = std::tmpnam(nullptr);
+                 self.SaveTrajectoryEuRoC(tmpfile);
+
+                 std::ifstream ifs(tmpfile);
+                 if (!ifs.is_open()) return py::none();
+
+                 std::vector<std::array<double,8>> rows;
+                 std::string line;
+                 while (std::getline(ifs, line)) {
+                     std::istringstream ss(line);
+                     std::array<double,8> r;
+                     if (ss >> r[0] >> r[1] >> r[2] >> r[3]
+                            >> r[4] >> r[5] >> r[6] >> r[7]) {
+                         rows.push_back(r);
+                     }
+                 }
+                 ifs.close();
+                 std::remove(tmpfile.c_str());
+
+                 if (rows.empty()) return py::none();
+
+                 py::array_t<double> out({static_cast<ssize_t>(rows.size()),
+                                          static_cast<ssize_t>(8)});
+                 auto buf = out.mutable_unchecked<2>();
+                 for (size_t i = 0; i < rows.size(); ++i)
+                     for (size_t j = 0; j < 8; ++j)
+                         buf(i, j) = rows[i][j];
+
+                 return out;
              })
 
         .def("shutdown",
