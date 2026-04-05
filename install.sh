@@ -3,11 +3,10 @@ set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-FORCE_REBUILD=false
-if [[ "${1:-}" == "force" ]]; then
-    FORCE_REBUILD=true
-    shift
+if [[ "${1:-}" == "--force" ]]; then
+    FORCE_REBUILD=1
 fi
+FORCE_REBUILD="${FORCE_REBUILD:-0}"
 
 if command -v nproc >/dev/null 2>&1; then
     BUILD_JOBS="${BUILD_JOBS:-$(nproc)}"
@@ -83,7 +82,12 @@ build_with_cmake() {
 }
 
 main() {
-    if [[ "$FORCE_REBUILD" == true ]]; then
+    if [[ -f "$ROOT_DIR/lib/libORB_SLAM3.so" ]] && [[ "$FORCE_REBUILD" != "1" ]]; then
+        echo "[ORB_SLAM3] Already built, skipping. Use --force to rebuild."
+        exit 0
+    fi
+
+    if [[ "$FORCE_REBUILD" == "1" ]]; then
         clean_build_caches
     fi
 
